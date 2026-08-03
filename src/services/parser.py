@@ -2,6 +2,7 @@ import asyncio
 from contextlib import suppress
 from datetime import timedelta
 from http import HTTPStatus
+import json
 import os
 import random
 import time
@@ -10,6 +11,8 @@ from curl_cffi import Response as R
 from pydantic import BaseModel, HttpUrl, validate_call
 import nodriver as uc
 import redis.asyncio as aioredis
+
+from services import OzonProductExtractor
 
 
 class Response(BaseModel):
@@ -187,9 +190,13 @@ async def main():
 
     curl_parser = OzonParserCurl(impersonate="chrome131", headers=headers)
     curl_parser.set_cookies(cookies)
-    response = await curl_parser.get(HttpUrl("https://www.ozon.kz/"))
-    print(f"Статус ответа: {response.status_code}")
-    print(response.text)
+    response = await curl_parser.get(
+        HttpUrl(
+            "https://ozon.kz/api/entrypoint-api.bx/page/json/v2?url=/product/biologicheski-aktivnaya-dobavka-k-pishche-perfecto-lux-perfekto-lyuks-4125695810/"
+        )
+    )
+    product = OzonProductExtractor().extract(json.loads(response.text))
+    print(product)
 
 
 if __name__ == "__main__":

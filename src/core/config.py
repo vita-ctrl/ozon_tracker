@@ -2,7 +2,7 @@ import json
 from functools import lru_cache
 from typing import Any
 
-from pydantic import field_validator
+from pydantic import HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,7 +55,7 @@ class Redis(BaseSettings):
     url: str
 
 
-class Headers(BaseSettings):
+class SelfConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -63,13 +63,15 @@ class Headers(BaseSettings):
         extra="ignore",
     )
 
-    headers: dict[str, str]
+    headers: dict
+    base_url: HttpUrl
 
 
 class Config:
     bot: Bot = Bot()  # type: ignore
     db: DB = DB()  # type: ignore
-    headers: dict = Headers().headers  # type: ignore
+    headers: dict = SelfConfig().headers  # type: ignore
+    base_url: str = str(SelfConfig().base_url)  # type: ignore
 
 
 @lru_cache
