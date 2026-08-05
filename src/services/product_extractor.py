@@ -25,6 +25,11 @@ class CharacteristicItem(TypedDict):
     values: list[str | None]
 
 
+class BigPromo(BaseModel):
+    title: str | None = None
+    quantity: int | None = None
+
+
 class ProductData(BaseModel):
     model_config = {"populate_by_name": True}
     product_type: ProductType = ProductType.IN_STOCK
@@ -46,6 +51,7 @@ class ProductData(BaseModel):
     seller_name: str | None = None
     characteristics: list[CharacteristicItem] = []
     gallery_images: list[str] = []
+    big_promo: BigPromo | None = None
 
     @field_validator("sku", "price", mode="before")
     @classmethod
@@ -99,6 +105,7 @@ class ProductDataDict(TypedDict, total=False):
     seller_name: str | None
     characteristics: list[CharacteristicItem]
     gallery_images: list[str]
+    big_promo: BigPromo | None
 
 
 # ─── Утилиты ──────────────────────────────────────────────────────────────────
@@ -336,6 +343,18 @@ class MainWidgetExtractor(WidgetExtractor):
         return {"url": clean_url(url_path, config.base_url)}
 
 
+class BigPromoExtractor(WidgetExtractor):
+    def extract(self, states: WidgetStates) -> ProductDataDict:
+        widget = states.get("bigPromoPDP")
+        if not widget:
+            return {}
+        title_val = safe_get(widget, "title", "text")
+        title = title_val if isinstance(title_val, str) else None
+        stock_text = safe_get(widget, "stockNumber", "text")
+        quantity = _to_int(stock_text) if stock_text else None
+        return {"big_promo": BigPromo(title=title, quantity=quantity)}
+
+
 # ─── Экстракторы из других источников ────────────────────────────────────────
 
 
@@ -422,6 +441,7 @@ class OzonProductExtractor:
             CharacteristicsExtractor(),
             GalleryExtractor(),
             MainWidgetExtractor(),
+            BigPromoExtractor(),
         ]
 
     def extract(self, json_data: dict) -> ProductData | OutOfStockProductData:

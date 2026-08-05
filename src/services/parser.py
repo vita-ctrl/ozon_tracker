@@ -31,7 +31,12 @@ class Cookies(BaseModel):
 
 
 class OzonParserCurl:
-    def __init__(self, impersonate: BrowserTypeLiteral, headers: dict) -> None:
+    def __init__(
+        self,
+        headers: dict,
+        *,
+        impersonate: BrowserTypeLiteral = "chrome131",
+    ) -> None:
         self.session = requests.AsyncSession(impersonate=impersonate)
         self.session.headers.update(headers)
 
@@ -49,8 +54,6 @@ class OzonParserCurl:
 
 
 class RedisCookieStorage:
-    """Хранение кук в Redis."""
-
     def __init__(
         self,
         redis_url: str | None = None,
@@ -90,17 +93,17 @@ class RedisCookieStorage:
 
 
 class OzonParserBrowser:
-    """Управление браузером: запуск, навигация, сбор кук."""
-
     def __init__(
         self,
         headless: bool = False,
         duration_range: tuple[float, float] = (10.0, 30.0),
         scroll_sleep_range: tuple[float, float] = (1.0, 4.0),
+        scroll_step_range: tuple[int, int] = (300, 700),
     ):
         self.headless = headless
         self.duration_range = duration_range
         self.scroll_sleep_range = scroll_sleep_range
+        self.scroll_step_range = scroll_step_range
         self.browser: uc.Browser | None = None
 
     async def refresh_cookies(self, url: str) -> Cookies:
@@ -113,7 +116,7 @@ class OzonParserBrowser:
         duration = random.uniform(*self.duration_range)
         end_time = time.time() + duration
         while time.time() < end_time:
-            scroll_step = random.randint(300, 700)
+            scroll_step = random.randint(*self.scroll_step_range)
             await page.scroll_down(scroll_step)
             await page.sleep(random.uniform(*self.scroll_sleep_range))
 
@@ -133,8 +136,6 @@ class OzonParserBrowser:
 
 
 class OzonCookieManager:
-    """Оркестратор: кеш в Redis + single-flight обновление через браузер."""
-
     def __init__(self, storage: RedisCookieStorage, browser: OzonParserBrowser):
         self.storage = storage
         self.browser = browser
@@ -188,11 +189,11 @@ async def main():
         cookies = await manager.collect_cookies(HttpUrl("https://www.ozon.kz/"))
         print(f"Всего собрано кук: {len(cookies.cookies)}")
 
-    curl_parser = OzonParserCurl(impersonate="chrome131", headers=headers)
+    curl_parser = OzonParserCurl(headers, impersonate="chrome131")
     curl_parser.set_cookies(cookies)
     response = await curl_parser.get(
         HttpUrl(
-            "https://ozon.kz/api/entrypoint-api.bx/page/json/v2?url=/product/biologicheski-aktivnaya-dobavka-k-pishche-perfecto-lux-perfekto-lyuks-4125695810/"
+            "https://ozon.kz/api/entrypoint-api.bx/page/json/v2?url=/product/tecno-smartfon-spark-50-rostest-eac-4-128-gb-nano-sim-goluboy-4399055272/"
         )
     )
     product = OzonProductExtractor().extract(json.loads(response.text))

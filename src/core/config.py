@@ -65,6 +65,7 @@ class SelfConfig(BaseSettings):
 
     headers: dict
     base_url: HttpUrl
+    base_api_url: HttpUrl
 
 
 class Config:
@@ -72,6 +73,7 @@ class Config:
     db: DB = DB()  # type: ignore
     headers: dict = SelfConfig().headers  # type: ignore
     base_url: str = str(SelfConfig().base_url)  # type: ignore
+    base_api_url: str = str(SelfConfig().base_api_url)  # type: ignore
 
 
 @lru_cache
