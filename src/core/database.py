@@ -3,12 +3,9 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import declarative_base
 
 from core import Config
-
-
-Base = declarative_base()
+from models import Base
 
 
 async def create_tables(engine: AsyncEngine) -> None:

@@ -12,8 +12,6 @@ from core import load_config
 
 config = load_config()
 
-# ─── Модели данных ────────────────────────────────────────────────────────────
-
 
 class ProductType(StrEnum):
     IN_STOCK = "in_stock"
@@ -108,9 +106,6 @@ class ProductDataDict(TypedDict, total=False):
     big_promo: BigPromo | None
 
 
-# ─── Утилиты ──────────────────────────────────────────────────────────────────
-
-
 def _to_int(v):
     if v is None:
         return 0
@@ -179,12 +174,7 @@ def fill(data: ProductDataDict, key: str, value) -> None:
         data[key] = value
 
 
-# ─── Разобранные widget states страницы товара ───────────────────────────────
-
-
 class WidgetStates:
-    """Инкапсулирует разбор widgetStates и доступ к отдельным виджетам."""
-
     def __init__(self, widget_states: dict[str, str]):
         self._states: dict[str, dict] = {}
         for key, value in widget_states.items():
@@ -203,18 +193,10 @@ class WidgetStates:
         return name in self._states
 
 
-# ─── Базовый экстрактор виджета ──────────────────────────────────────────────
-
-
 class WidgetExtractor(ABC):
-    """Извлекает часть данных из одного виджета страницы товара."""
-
     @abstractmethod
     def extract(self, states: WidgetStates) -> ProductDataDict:
-        """Возвращает частично заполненный словарь данных товара."""
-
-
-# ─── Экстракторы отдельных виджетов ──────────────────────────────────────────
+        """Returns a partially filled product data dictionary."""
 
 
 class HeadingExtractor(WidgetExtractor):
@@ -355,12 +337,7 @@ class BigPromoExtractor(WidgetExtractor):
         return {"big_promo": BigPromo(title=title, quantity=quantity)}
 
 
-# ─── Экстракторы из других источников ────────────────────────────────────────
-
-
 class JsonLdExtractor:
-    """Извлекает данные из JSON-LD разметки страницы."""
-
     def extract(self, json_data: dict) -> ProductDataDict:
         ld = extract_json_ld(json_data)
         if not ld:
@@ -383,8 +360,6 @@ class JsonLdExtractor:
 
 
 class OutOfStockExtractor:
-    """Извлекает данные из виджета отсутствующего товара."""
-
     def extract(self, states: WidgetStates) -> OutOfStockProductData:
         widget = states.get("webOutOfStock")
         data: dict = {}
@@ -413,12 +388,7 @@ class OutOfStockExtractor:
         return OutOfStockProductData(**data)
 
 
-# ─── Оркестратор ─────────────────────────────────────────────────────────────
-
-
 class OzonProductExtractor:
-    """Собирает данные товара из всех источников страницы Ozon."""
-
     FILL_KEYS = {
         "title",
         "sku",

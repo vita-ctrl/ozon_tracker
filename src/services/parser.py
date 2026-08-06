@@ -2,8 +2,6 @@ import asyncio
 from contextlib import suppress
 from datetime import timedelta
 from http import HTTPStatus
-import json
-import os
 import random
 import time
 from curl_cffi import BrowserTypeLiteral, requests
@@ -11,8 +9,6 @@ from curl_cffi import Response as R
 from pydantic import BaseModel, HttpUrl, validate_call
 import nodriver as uc
 import redis.asyncio as aioredis
-
-from services import OzonProductExtractor
 
 
 class Response(BaseModel):
@@ -56,11 +52,11 @@ class OzonParserCurl:
 class RedisCookieStorage:
     def __init__(
         self,
-        redis_url: str | None = None,
+        redis_url: str,
         key: str = "ozon:kz:cookies",
         ttl: timedelta = timedelta(minutes=5),
     ):
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
+        self.redis_url = redis_url
         self.key = key
         self.ttl = ttl
         self._redis: aioredis.Redis | None = None
@@ -174,31 +170,3 @@ class OzonCookieManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
-
-async def main():
-    headers = {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
-        "Referer": "https://ozon.kz/",
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    }
-    storage = RedisCookieStorage()
-    browser = OzonParserBrowser(headless=False)
-    async with OzonCookieManager(storage=storage, browser=browser) as manager:
-        cookies = await manager.collect_cookies(HttpUrl("https://www.ozon.kz/"))
-        print(f"Всего собрано кук: {len(cookies.cookies)}")
-
-    curl_parser = OzonParserCurl(headers, impersonate="chrome131")
-    curl_parser.set_cookies(cookies)
-    response = await curl_parser.get(
-        HttpUrl(
-            "https://ozon.kz/api/entrypoint-api.bx/page/json/v2?url=/product/tecno-smartfon-spark-50-rostest-eac-4-128-gb-nano-sim-goluboy-4399055272/"
-        )
-    )
-    product = OzonProductExtractor().extract(json.loads(response.text))
-    print(product)
-
-
-if __name__ == "__main__":
-    uc.loop().run_until_complete(main())

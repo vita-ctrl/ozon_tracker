@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from api import UserDep
 from api.v1 import routers
 from bot import create_bot, create_dispatcher
 from core import create_sessionmaker, load_config
@@ -40,7 +41,7 @@ def create_app() -> FastAPI:
     routers.setup(app)
 
     @app.get("/health")
-    async def health_check():
+    async def health_check(user: UserDep):
         return {"status": "healthy"}
 
     return app
