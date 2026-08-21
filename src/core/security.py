@@ -1,3 +1,4 @@
+from datetime import timedelta
 import hashlib
 import hmac
 import time
@@ -9,7 +10,9 @@ from schemas import WebAppInitData
 
 
 def verify_init_data(
-    init_data_raw: str, bot_token: str, max_age_seconds: int = 86400
+    init_data_raw: str,
+    bot_token: str,
+    expire_at: timedelta = timedelta(minutes=5),
 ) -> bool:
     parsed = dict(parse_qsl(init_data_raw, keep_blank_values=True))
 
@@ -36,7 +39,7 @@ def verify_init_data(
     except ValidationError:
         return False
 
-    if int(time.time()) - data.auth_date > max_age_seconds:
+    if time.time() - data.auth_date > expire_at.total_seconds():
         return False
 
     return True

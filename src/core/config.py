@@ -71,6 +71,7 @@ class SelfConfig(BaseSettings):
 class Config:
     bot: Bot = Bot()  # type: ignore
     db: DB = DB()  # type: ignore
+    redis: Redis = Redis()  # type: ignore
     headers: dict = SelfConfig().headers  # type: ignore
     base_url: str = str(SelfConfig().base_url)  # type: ignore
     base_api_url: str = str(SelfConfig().base_api_url)  # type: ignore

@@ -2,11 +2,13 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from pydantic import HttpUrl
 
 from api import UserDep
 from api.v1 import routers
 from bot import create_bot, create_dispatcher
 from core import create_sessionmaker, load_config
+from services import OzonCookieManager, OzonParserBrowser, RedisCookieStorage
 
 
 config = load_config()
@@ -25,9 +27,14 @@ async def lifespan(app: FastAPI):
         dp.start_polling(bot, config=config, handle_signals=False)
     )
 
+    storage = RedisCookieStorage(config.redis.url)
+    manager = OzonCookieManager(storage, OzonParserBrowser())
+    await manager.start_watcher(HttpUrl(config.base_url))
+
     yield
 
     await dp.stop_polling()
+    await manager.close()
 
     polling_task.cancel()
     await asyncio.gather(polling_task, return_exceptions=True)
@@ -42,6 +49,6 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check(user: UserDep):
-        return {"status": "healthy"}
+        return user
 
     return app
