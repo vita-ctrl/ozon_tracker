@@ -1,15 +1,34 @@
-from aiohttp.client import ClientSession
-import cv2
-from nodriver import Element
-import numpy as np
+import asyncio
+import random
 import re
 
+from aiohttp import ClientResponseError
+from aiohttp.client import ClientSession
+import cv2
+from nodriver import Element, Tab
+from nodriver.core.tab import cdp
+import numpy as np
+
 from pydantic import BaseModel
+
+
+CAPTCHA_TEXTS = (
+    "Подтвердите, что вы не бот",
+    "Подтвердите, что Вы не бот",
+    "Сопоставьте пазл",
+    "передвигая ползунок",
+)
+
+MAX_DRAG_ITERATIONS = 50
 
 
 class CaptchaPosition(BaseModel):
     top: int
     left: int
+
+
+class CaptchaSolveError(RuntimeError):
+    pass
 
 
 class OzonCaptchaSolver:
@@ -23,7 +42,7 @@ class OzonCaptchaSolver:
         puzzle_url = puzzle.attrs.get("src")
 
         if not image_url or not puzzle_url:
-            raise ValueError("image_url or puzzle_url is NoneType")
+            raise CaptchaSolveError("image_url or puzzle_url is None")
 
         image_np, puzzle_np = await self.load_images(
             image_url=image_url,
@@ -32,7 +51,7 @@ class OzonCaptchaSolver:
 
         style = puzzle.attrs.get("style")
         if not style:
-            raise ValueError("style is None")
+            raise CaptchaSolveError("style is None")
         position = self.parse_position(style)
 
         return self.solve(
@@ -45,7 +64,13 @@ class OzonCaptchaSolver:
 
     async def _image_bytes(self, url: str) -> bytes:
         async with self.session.get(url) as response:
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except ClientResponseError as e:
+                raise CaptchaSolveError(
+                    f"Captcha image fetch failed: HTTP {e.status} {e.message}; "
+                    f"url={e.request_info.real_url}"
+                ) from e
             image_bytes = await response.read()
             return image_bytes
 
@@ -87,7 +112,7 @@ class OzonCaptchaSolver:
         arr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
         if img is None:
-            raise ValueError("Failed to decode image bytes.")
+            raise CaptchaSolveError("Failed to decode image bytes.")
         return img
 
     def solve(
@@ -130,7 +155,7 @@ class OzonCaptchaSolver:
         # Crop puzzle piece to its tight alpha bounding box
         ys, xs = np.where(alpha > 0)
         if len(xs) == 0 or len(ys) == 0:
-            raise ValueError("Puzzle image alpha channel has no valid content.")
+            raise CaptchaSolveError("Puzzle image alpha channel has no valid content.")
 
         min_x_in_pz = xs.min()
         crop_pz_gray = pz_gray[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
@@ -154,7 +179,7 @@ class OzonCaptchaSolver:
             _, _, _, max_loc = cv2.minMaxLoc(res)
             matched_x = max_loc[0]
 
-        puzzle_target_x = matched_x - min_x_in_pz
+        puzzle_target_x = int(matched_x - min_x_in_pz)
 
         if visualize:
             vis = (
@@ -192,3 +217,117 @@ class OzonCaptchaSolver:
             cv2.destroyAllWindows()
 
         return puzzle_target_x
+
+    async def solve_captcha(self, page: Tab, max_attempts: int = 3) -> None:
+        # raise CaptchaSolveError(f"Failed to solve captcha in {max_attempts} attempts")
+
+        for _ in range(max_attempts):
+            if not await self.is_captcha(page):
+                return
+            await self._solve_attempt(page)
+            if not await self.is_captcha(page):
+                return
+        raise CaptchaSolveError(f"Failed to solve captcha in {max_attempts} attempts")
+
+    async def is_captcha(self, page: Tab) -> bool:
+        for text in CAPTCHA_TEXTS:
+            element = await page.find_element_by_text(text)
+            if element is not None:
+                return True
+        return False
+
+    async def get_captcha_elements(self, page: Tab) -> tuple[Element, Element]:
+        captcha = await page.select("#captcha")
+
+        if not isinstance(captcha, Element):
+            raise CaptchaSolveError("Captcha element not found")
+
+        image = await captcha.query_selector("#image")
+        puzzle = await captcha.query_selector("#puzzle")
+
+        if not isinstance(image, Element) or not isinstance(puzzle, Element):
+            raise CaptchaSolveError("Captcha or puzzle element not found")
+        return image, puzzle
+
+    async def drag_slider(
+        self, tab: Tab, slider_element: Element, distance_x: float, steps: int = 30
+    ) -> tuple[int, int]:
+        pos = await slider_element.get_position()
+        start_x = pos.center[0]
+        start_y = pos.center[1]
+
+        # 1. Зажимаем — mousePressed, БЕЗ mouseReleased
+        await tab.send(
+            cdp.input_.dispatch_mouse_event(
+                type_="mousePressed",
+                x=start_x,
+                y=start_y,
+                button=cdp.input_.MouseButton("left"),
+                buttons=1,
+                click_count=1,
+            )
+        )
+        await asyncio.sleep(random.uniform(0.05, 0.15))
+
+        # 2. Двигаем мышь пошагово, кнопка всё ещё "зажата" (buttons=1)
+        current_x = start_x
+        for i in range(1, steps + 1):
+            progress = i / steps
+            eased = 1 - (1 - progress) ** 2  # ease-out
+            target_x = start_x + distance_x * eased
+            jitter_y = start_y + random.uniform(-1.5, 1.5)
+
+            await tab.send(
+                cdp.input_.dispatch_mouse_event(
+                    type_="mouseMoved",
+                    x=target_x,
+                    y=jitter_y,
+                    button=cdp.input_.MouseButton("left"),
+                    buttons=1,
+                )
+            )
+            current_x = target_x
+            await asyncio.sleep(random.uniform(0.01, 0.03))
+
+        return current_x, start_y
+
+    async def _release_slider(self, page: Tab, x: float, y: float) -> None:
+        await page.send(
+            cdp.input_.dispatch_mouse_event(
+                type_="mouseReleased",
+                x=x,
+                y=y,
+                button=cdp.input_.MouseButton("left"),
+                buttons=0,
+            )
+        )
+
+    async def _read_puzzle_left(self, puzzle: Element) -> int:
+        attrs = await puzzle.get_js_attributes()
+        left = str(attrs["style"]["left"])
+
+        match = re.search(r"-?\d+(?:\.\d+)?", left)
+        if match is None:
+            raise CaptchaSolveError(f"Match of left is None. Left: {left}")
+        return round(float(match.group()))
+
+    async def _solve_attempt(self, page: Tab) -> None:
+        image, puzzle = await self.get_captcha_elements(page)
+        target_left = await self.solve_from_elements(image, puzzle)
+
+        slider = await page.select("#slider")
+
+        if not isinstance(slider, Element):
+            raise CaptchaSolveError("Slider element is None")
+
+        left_puzzle = await self._read_puzzle_left(puzzle)
+
+        x, y = 0.0, 0.0
+        drags = 0
+        while left_puzzle < target_left and drags < MAX_DRAG_ITERATIONS:
+            x, y = await self.drag_slider(page, slider, 10, 1)
+            left_puzzle = await self._read_puzzle_left(puzzle)
+            drags += 1
+
+        await self._release_slider(page, x, y)
+        await page.sleep(2)
