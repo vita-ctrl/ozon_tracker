@@ -1,1 +1,0 @@
-{'id': 'puzzle', 'class_': 'puzzle', 'src': 'https://cdn2.ozone.ru/s3/abt-challenge/cpt/11/39b2501e.png', 'alt': '', 'draggable': 'false', 'style': 'top: 72px; left: 69px;'}
