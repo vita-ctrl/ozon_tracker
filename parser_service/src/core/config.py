@@ -80,6 +80,8 @@ class Config:
     watch_cookies_interval = timedelta(minutes=5)
     watch_cookies_refresh_bellow = timedelta(seconds=30)
     cookie_ttl = timedelta(minutes=5)
+    rate_limit_capacity: int = 10
+    rate_limit_refill_rate: float = 10.0
 
 
 @lru_cache
