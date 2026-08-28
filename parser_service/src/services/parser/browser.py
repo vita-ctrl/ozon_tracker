@@ -56,7 +56,7 @@ class OzonParserBrowser:
 
         solver = OzonCaptchaSolver(self.http_session)
         try:
-            await solver.solve_captcha(page, config.max_captcha_solve_attemps)
+            await solver.solve_captcha(page, config.max_captcha_solve_attempts)
         except CaptchaSolveError:
             return None
 

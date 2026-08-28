@@ -13,6 +13,7 @@ from .product_extractor import (
     OutOfStockProductData,
     OzonProductExtractor,
     ProductData,
+    ProductExtractError,
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "OzonProductExtractor",
     "ParserService",
     "ProductData",
+    "ProductExtractError",
     "RedisCookieStorage",
     "Response"
 ]

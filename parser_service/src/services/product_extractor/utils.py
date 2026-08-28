@@ -1,4 +1,3 @@
-import re
 from urllib.parse import urlparse, urlunparse
 
 from core import load_config
@@ -9,12 +8,15 @@ config = load_config()
 def _to_int(v):
     if v is None:
         return 0
-    if isinstance(v, int):
-        return v
+    if isinstance(v, (int, float)):
+        return round(v)
     if isinstance(v, str):
-        v = re.sub(r"[^\d]", "", v)
-        return int(v) if v else 0
-    return int(v)
+        v_clean = v.strip().replace(" ", "").replace(",", ".")
+        try:
+            return round(float(v_clean))
+        except ValueError:
+            return 0
+    return 0
 
 
 def _to_str(v):

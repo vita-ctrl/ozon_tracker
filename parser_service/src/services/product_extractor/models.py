@@ -3,6 +3,8 @@ from typing import TypedDict
 
 from pydantic import BaseModel, field_validator
 
+from core import Currency
+
 from .utils import _to_int
 
 

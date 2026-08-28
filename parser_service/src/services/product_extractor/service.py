@@ -1,6 +1,7 @@
 import json
 from typing import ClassVar
 
+from .exceptions import ProductExtractError
 from .extractors.base import WidgetExtractor
 from .extractors.json_ld import JsonLdExtractor
 from .extractors.out_of_stock import OutOfStockExtractor
@@ -54,24 +55,27 @@ class OzonProductExtractor:
         ]
 
     def extract(self, json_data: dict | str) -> ProductData | OutOfStockProductData:
-        if isinstance(json_data, str):
-            json_data = json.loads(json_data)
-        states = WidgetStates(json_data.get("widgetStates", {}))
+        try:
+            if isinstance(json_data, str):
+                json_data = json.loads(json_data)
+            states = WidgetStates(json_data.get("widgetStates", {}))
 
-        if states.has("webOutOfStock"):
-            return OutOfStockExtractor().extract(states)
+            if states.has("webOutOfStock"):
+                return OutOfStockExtractor().extract(states)
 
-        data: ProductDataDict = JsonLdExtractor().extract(json_data)
+            data: ProductDataDict = JsonLdExtractor().extract(json_data)
 
-        for extractor in self._extractors:
-            partial = extractor.extract(states)
-            for key, value in partial.items():
-                if key in self.FILL_KEYS:
-                    fill(data, key, value)
-                else:
-                    data[key] = value  # type: ignore[index]
+            for extractor in self._extractors:
+                partial = extractor.extract(states)
+                for key, value in partial.items():
+                    if key in self.FILL_KEYS:
+                        fill(data, key, value)
+                    else:
+                        data[key] = value  # type: ignore[index]
 
-        return ProductData(**data)
+            return ProductData(**data)
+        except Exception as e:
+            raise ProductExtractError("Failed to extract product data") from e
 
 
 def fill(data: ProductDataDict, key: str, value) -> None:
@@ -87,6 +91,7 @@ __all__ = [
     "ProductData",
     "ProductDataDict",
     "ProductType",
+    "ProductExtractError",
     "WidgetExtractor",
     "WidgetStates",
 ]
