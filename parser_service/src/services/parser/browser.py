@@ -2,7 +2,7 @@ import random
 import time
 from contextlib import suppress
 
-import aiohttp
+import httpx
 import nodriver as uc
 
 from core import load_config
@@ -26,12 +26,12 @@ class OzonParserBrowser:
         self.scroll_sleep_range = scroll_sleep_range
         self.scroll_step_range = scroll_step_range
         self.browser: uc.Browser | None = None
-        self._http_session: aiohttp.ClientSession | None = None
+        self._http_session: httpx.AsyncClient | None = None
 
     @property
-    def http_session(self) -> aiohttp.ClientSession:
+    def http_session(self) -> httpx.AsyncClient:
         if self._http_session is None:
-            self._http_session = aiohttp.ClientSession()
+            self._http_session = httpx.AsyncClient()
         return self._http_session
 
     async def refresh_cookies(self, url: str) -> Cookies:
@@ -87,7 +87,7 @@ class OzonParserBrowser:
     async def close(self) -> None:
         if self._http_session:
             with suppress(Exception):
-                await self._http_session.close()
+                await self._http_session.aclose()
             self._http_session = None
 
         if self.browser:

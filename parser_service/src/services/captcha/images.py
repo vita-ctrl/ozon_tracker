@@ -1,13 +1,12 @@
 import cv2
 import numpy as np
-from aiohttp import ClientResponseError
-from aiohttp.client import ClientSession
+from httpx import AsyncClient, HTTPStatusError
 
 from .models import CaptchaSolveError
 
 
 class CaptchaImageLoader:
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: AsyncClient):
         self.session = session
 
     async def load_images(
@@ -22,16 +21,15 @@ class CaptchaImageLoader:
         return image_np, puzzle_np
 
     async def _image_bytes(self, url: str) -> bytes:
-        async with self.session.get(url) as response:
-            try:
-                response.raise_for_status()
-            except ClientResponseError as e:
-                raise CaptchaSolveError(
-                    f"Captcha image fetch failed: HTTP {e.status} {e.message}; "
-                    f"url={e.request_info.real_url}"
-                ) from e
-            image_bytes = await response.read()
-            return image_bytes
+        response = await self.session.get(url)
+        try:
+            response.raise_for_status()
+        except HTTPStatusError as e:
+            raise CaptchaSolveError(
+                f"Captcha image fetch failed: HTTP {e.response.status_code} "
+                f"{e.response.reason_phrase}; url={e.request.url}"
+            ) from e
+        return response.content
 
     @staticmethod
     def _to_np_array(image_bytes: bytes) -> np.ndarray:

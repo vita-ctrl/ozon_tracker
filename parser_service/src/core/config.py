@@ -41,6 +41,8 @@ class Currency(str, Enum):
         return self.value
 
 
+
+
 class Redis(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
