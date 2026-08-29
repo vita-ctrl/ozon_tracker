@@ -4,7 +4,7 @@ from contextlib import suppress
 from core import load_config
 
 from .browser import OzonParserBrowser
-from .models import Cookies
+from .models import CookieCollectionError, Cookies, RefreshAlreadyInProgressError
 from .storage import RedisCookieStorage
 
 config = load_config()
@@ -23,21 +23,34 @@ class OzonCookieManager:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
-    async def collect_cookies(self, *, force: bool = False) -> Cookies:
+    async def collect_cookies(
+        self, *, force: bool = False, retry_after_exc: bool = False
+    ) -> Cookies:
         if not force:
             cached = await self.storage.get()
             if cached:
                 return cached
 
-        async with self._lock:
-            if not force:
-                cached = await self.storage.get()
-                if cached:
-                    return cached
+        if force:
+            acquired = await self.storage.acquire_refresh_lock()
+            if not acquired:
+                raise RefreshAlreadyInProgressError()
 
-            cookies = await self.browser.refresh_cookies(config.base_url)
-            await self.storage.set(cookies)
-            return cookies
+        async with self._lock:
+            try:
+                try:
+                    cookies = await self.browser.refresh_cookies(config.base_url)
+                except CookieCollectionError:
+                    if not retry_after_exc:
+                        raise
+                    await self.browser.restart_browser()
+                    cookies = await self.browser.refresh_cookies(config.base_url)
+
+                await self.storage.set(cookies)
+                return cookies
+            finally:
+                if force:
+                    await self.storage.release_refresh_lock()
 
     async def watch(self) -> None:
         refresh_bellow, interval = (
@@ -48,7 +61,8 @@ class OzonCookieManager:
         while True:
             ttl = await self.storage.get_ttl()
             if ttl < refresh_bellow.total_seconds():
-                await self.collect_cookies(force=True)
+                with suppress(RefreshAlreadyInProgressError):
+                    await self.collect_cookies(force=True, retry_after_exc=True)
             await asyncio.sleep(interval.total_seconds())
 
     async def start_watcher(self) -> None:

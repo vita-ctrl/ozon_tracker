@@ -5,6 +5,7 @@ from .models import (
     Cookie,
     CookieCollectionError,
     Cookies,
+    RefreshAlreadyInProgressError,
     Response,
 )
 from .service import ParserService
@@ -14,6 +15,7 @@ __all__ = [
     "Cookie",
     "CookieCollectionError",
     "Cookies",
+    "RefreshAlreadyInProgressError",
     "OzonCookieManager",
     "OzonParserBrowser",
     "OzonParserCurl",

@@ -11,11 +11,15 @@ class RedisCookieStorage:
         self,
         redis_url: str,
         ttl: timedelta,
-        key: str = "ozon:kz:cookies"
+        key: str = "ozon:kz:cookies",
+        refresh_lock_key: str = "ozon:kz:refresh_lock",
+        refresh_lock_ttl: timedelta = timedelta(minutes=5),
     ):
         self.redis_url = redis_url
         self.key = key
         self.ttl = ttl
+        self.refresh_lock_key = refresh_lock_key
+        self.refresh_lock_ttl = refresh_lock_ttl
         self._redis: aioredis.Redis | None = None
 
     async def _client(self) -> aioredis.Redis:
@@ -47,3 +51,14 @@ class RedisCookieStorage:
             with suppress(Exception):
                 await self._redis.aclose()
             self._redis = None
+
+    async def acquire_refresh_lock(self) -> bool:
+        redis = await self._client()
+        result = await redis.set(
+            self.refresh_lock_key, "1", nx=True, ex=int(self.refresh_lock_ttl.total_seconds())
+        )
+        return result is not None
+
+    async def release_refresh_lock(self) -> None:
+        redis = await self._client()
+        await redis.delete(self.refresh_lock_key)

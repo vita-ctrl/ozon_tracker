@@ -25,7 +25,7 @@ class OzonParserBrowser:
         self.duration_range = duration_range
         self.scroll_sleep_range = scroll_sleep_range
         self.scroll_step_range = scroll_step_range
-        self.browser: uc.Browser | None = None
+        self._browser: uc.Browser | None = None
         self._http_session: httpx.AsyncClient | None = None
 
     @property
@@ -35,23 +35,22 @@ class OzonParserBrowser:
         return self._http_session
 
     async def refresh_cookies(self, url: str) -> Cookies:
-        if not self.browser:
-            self.browser = await uc.start(headless=self.headless)
+        if not self._browser:
+            self._browser = await uc.start(headless=self.headless)
 
         for _ in range(config.max_cookie_attempts):
             cookies = await self._collect_attempt(url)
             if cookies is not None:
                 return cookies
-
         raise CookieCollectionError(
             f"Failed to collect cookies after {config.max_cookie_attempts} attempts"
         )
 
     async def _collect_attempt(self, url: str) -> Cookies | None:
-        if not self.browser:
-            self.browser = await uc.start(headless=self.headless)
+        if not self._browser:
+            self._browser = await uc.start(headless=self.headless)
 
-        page = await self.browser.get(url)
+        page = await self._browser.get(url)
         await page.sleep(3)
 
         solver = OzonCaptchaSolver(self.http_session)
@@ -63,7 +62,7 @@ class OzonParserBrowser:
         if await self._scroll_with_captcha_check(page, solver):
             return None
 
-        raw_cookies = await self.browser.cookies.get_all()
+        raw_cookies = await self._browser.cookies.get_all()
         cookies_list = [
             Cookie(name=c.name, value=c.value, domain=c.domain)
             for c in raw_cookies
@@ -84,13 +83,19 @@ class OzonParserBrowser:
             await page.sleep(random.uniform(*self.scroll_sleep_range))
         return False
 
+    async def restart_browser(self):
+        if self._browser:
+            with suppress(Exception):
+                self._browser.stop()
+        self._browser = await uc.start(headless=self.headless)
+
     async def close(self) -> None:
         if self._http_session:
             with suppress(Exception):
                 await self._http_session.aclose()
             self._http_session = None
 
-        if self.browser:
+        if self._browser:
             with suppress(Exception):
-                self.browser.stop()
-            self.browser = None
+                self._browser.stop()
+            self._browser = None

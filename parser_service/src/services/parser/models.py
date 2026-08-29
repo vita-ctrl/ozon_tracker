@@ -20,3 +20,7 @@ class Cookies(BaseModel):
 
 class CookieCollectionError(RuntimeError):
     pass
+
+
+class RefreshAlreadyInProgressError(RuntimeError):
+    pass

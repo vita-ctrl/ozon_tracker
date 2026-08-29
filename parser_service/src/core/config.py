@@ -79,9 +79,10 @@ class Config:
 
     max_cookie_attempts: int = 3
     max_captcha_solve_attempts: int = 3
-    watch_cookies_interval = timedelta(minutes=5)
-    watch_cookies_refresh_bellow = timedelta(seconds=30)
+    watch_cookies_interval = timedelta(minutes=1)
+    watch_cookies_refresh_bellow = timedelta(minutes=1)
     cookie_ttl = timedelta(minutes=5)
+    refresh_lock_ttl = timedelta(minutes=5)
     rate_limit_capacity: int = 10
     rate_limit_refill_rate: float = 10.0
 

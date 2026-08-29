@@ -1,4 +1,4 @@
 from .app import create_app
-from .deps import ParserServiceDep
+from .deps import CookieManagerDep, ParserServiceDep
 
-__all__ = ["ParserServiceDep", "create_app"]
+__all__ = ["CookieManagerDep", "ParserServiceDep", "create_app"]

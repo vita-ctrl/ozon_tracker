@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     redis_client = aioredis.from_url(config.redis.url, decode_responses=True)
     app.state.redis = redis_client
 
-    storage = RedisCookieStorage(config.redis.url, config.cookie_ttl)
+    storage = RedisCookieStorage(config.redis.url, config.cookie_ttl, refresh_lock_ttl=config.refresh_lock_ttl)
     manager = OzonCookieManager(storage, OzonParserBrowser())
     await manager.start_watcher()
 

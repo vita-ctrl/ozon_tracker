@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import suppress
 from http import HTTPStatus
 
@@ -5,7 +6,12 @@ from curl_cffi.requests.exceptions import Timeout
 from fastapi import HTTPException
 
 from core import load_config
-from services.parser import CookieCollectionError, OzonCookieManager, OzonParserCurl
+from services.parser import (
+    OzonCookieManager,
+    OzonParserCurl,
+    RefreshAlreadyInProgressError,
+)
+from services.parser.models import CookieCollectionError
 from services.product_extractor import (
     Currency,
     OutOfStockProductData,
@@ -62,6 +68,14 @@ class ParserService:
             )
 
         if not response.status_code.is_success:
+
+            async def _refresh():
+                with suppress(CookieCollectionError, RefreshAlreadyInProgressError):
+                    await self.cookie_manager.collect_cookies(
+                        force=True, retry_after_exc=True
+                    )
+
+            asyncio.create_task(_refresh())
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail="Service didn't respond successfully.",

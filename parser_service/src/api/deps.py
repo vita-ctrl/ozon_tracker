@@ -8,6 +8,9 @@ from services.parser import OzonCookieManager
 
 config = load_config()
 
+def get_cookie_manager(request: Request) -> OzonCookieManager:
+    return request.app.state.cookie_manager
+
 def get_parser_service(request: Request) -> ParserService:
     product_extractor = OzonProductExtractor()
     curl_client = OzonParserCurl(config.headers)
@@ -15,3 +18,4 @@ def get_parser_service(request: Request) -> ParserService:
     return ParserService(curl_client, product_extractor, cookie_manager)
 
 ParserServiceDep = Annotated[ParserService, Depends(get_parser_service)]
+CookieManagerDep = Annotated[OzonCookieManager, Depends(get_cookie_manager)]
