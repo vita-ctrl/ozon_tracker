@@ -1,3 +1,4 @@
+import re
 from urllib.parse import urlparse, urlunparse
 
 from core import load_config
@@ -15,8 +16,34 @@ def _to_int(v):
         try:
             return round(float(v_clean))
         except ValueError:
+            m = re.search(r"\d+(?:[.,]\d+)?", re.sub(r"\s", "", v))
+            if m:
+                try:
+                    return round(float(m.group(0).replace(",", ".")))
+                except ValueError:
+                    return 0
             return 0
     return 0
+
+
+def _to_float(v) -> float:
+    if v is None:
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        v_clean = v.strip().replace(" ", "").replace(",", ".")
+        try:
+            return float(v_clean)
+        except ValueError:
+            m = re.search(r"\d+(?:[.,]\d+)?", re.sub(r"\s", "", v))
+            if m:
+                try:
+                    return float(m.group(0).replace(",", "."))
+                except ValueError:
+                    return 0.0
+            return 0.0
+    return 0.0
 
 
 def _to_str(v):

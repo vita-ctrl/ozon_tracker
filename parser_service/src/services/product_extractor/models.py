@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 
 from core import Currency
 
-from .utils import _to_int
+from .utils import _to_float, _to_int
 
 
 class ProductType(StrEnum):
@@ -31,7 +31,7 @@ class ProductData(BaseModel):
     brand: str | None = None
     sku: int
     main_image: str | None = None
-    price: int
+    price: float
     currency: str | None = None
     availability: str | None = None
     url: str
@@ -46,12 +46,22 @@ class ProductData(BaseModel):
     gallery_images: list[str] = []
     big_promo: BigPromo | None = None
 
-    @field_validator("sku", "price", mode="before")
+    @field_validator("sku", mode="before")
     @classmethod
-    def coerce_int(cls, v):
+    def coerce_sku(cls, v):
         if v is None or v == "":
             raise ValueError("Field is required")
         result = _to_int(v)
+        if result == 0:
+            raise ValueError("Field must be a non-zero value")
+        return result
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def coerce_price(cls, v):
+        if v is None or v == "":
+            raise ValueError("Field is required")
+        result = _to_float(v)
         if result == 0:
             raise ValueError("Field must be a non-zero value")
         return result
@@ -85,7 +95,7 @@ class ProductDataDict(TypedDict, total=False):
     brand: str | None
     sku: int
     main_image: str | None
-    price: int
+    price: float
     currency: str | None
     availability: str | None
     url: str

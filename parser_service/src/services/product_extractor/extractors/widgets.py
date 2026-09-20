@@ -1,7 +1,15 @@
 import re
 
 from ..models import BigPromo, CharacteristicItem, ProductDataDict
-from ..utils import _to_int, _to_str, clean_url, config, find_texts_by_key, safe_get
+from ..utils import (
+    _to_float,
+    _to_int,
+    _to_str,
+    clean_url,
+    config,
+    find_texts_by_key,
+    safe_get,
+)
 from ..widget_states import WidgetStates
 from .base import WidgetExtractor
 
@@ -31,7 +39,7 @@ class PriceExtractor(WidgetExtractor):
             "price_text": widget.get("price"),
             "original_price_text": widget.get("originalPrice"),
         }
-        price = _to_int(widget.get("price"))
+        price = _to_float(widget.get("price"))
         if price:
             result["price"] = price
         return result
