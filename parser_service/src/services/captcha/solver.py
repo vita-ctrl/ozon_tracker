@@ -173,10 +173,27 @@ class OzonCaptchaSolver:
 
         x, y = 0.0, 0.0
         drags = 0
-        while left_puzzle < target_left and drags < MAX_DRAG_ITERATIONS:
-            x, y = await self.drag_slider(page, slider, 10, 1)
+
+        tolerance = 2
+
+        while abs(left_puzzle - target_left) > tolerance and drags < MAX_DRAG_ITERATIONS:
+            remaining_diff = target_left - left_puzzle
+
+            if remaining_diff > 0:
+                step_x = max(1.0, min(50.0, remaining_diff))
+                steps = 20
+            else:
+                step_x = min(-1.0, max(-10.0, remaining_diff))
+                steps = 5
+
+            x, y = await self.drag_slider(page, slider, step_x, steps=steps)
+
+            prev_left = left_puzzle
             left_puzzle = await self._read_puzzle_left(puzzle)
             drags += 1
+
+            if left_puzzle == prev_left:
+                break
 
         await self._release_slider(page, x, y)
         await page.sleep(2)
