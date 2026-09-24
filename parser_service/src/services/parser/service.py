@@ -47,6 +47,15 @@ class ParserService:
                 detail="Service didn't change currency successfully.",
             )
 
+    async def check_health(self):
+        healthy = await self.cookie_manager.storage.get_health()
+        if not healthy:
+            raise HTTPException(
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                detail="Service is not healthy.",
+            )
+
+
     async def get_product_data(
         self, url: str, currency: Currency | None = None
     ) -> ProductData | OutOfStockProductData:
@@ -63,11 +72,13 @@ class ParserService:
         try:
             response = await self.curl_client.get(f"{config.base_api_url}{url}")
         except Timeout:
+            await self.cookie_manager.storage.set_health(False)
             raise HTTPException(
                 status_code=HTTPStatus.GATEWAY_TIMEOUT, detail="Service didn't respond."
             )
 
         if not response.status_code.is_success:
+            await self.cookie_manager.storage.set_health(False)
 
             async def _refresh():
                 with suppress(CookieCollectionError, RefreshAlreadyInProgressError):
@@ -77,7 +88,7 @@ class ParserService:
 
             asyncio.create_task(_refresh())
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail="Service didn't respond successfully.",
             )
 

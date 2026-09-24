@@ -1,8 +1,9 @@
+import socket
 from datetime import timedelta
 from enum import Enum
 from functools import lru_cache
 
-from pydantic import HttpUrl
+from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -67,6 +68,7 @@ class SelfConfig(BaseSettings):
     base_api_url: HttpUrl
     currency_change_url: HttpUrl
     default_currency: Currency
+    instance_id: str = Field(default_factory=socket.gethostname)
 
 
 class Config:
@@ -76,6 +78,7 @@ class Config:
     base_api_url: str = str(SelfConfig().base_api_url)  # type: ignore
     currency_change_url: str = str(SelfConfig().currency_change_url)  # type: ignore
     default_currency: Currency = SelfConfig().default_currency  # type: ignore
+    instance_id: str = SelfConfig().instance_id  # type: ignore
 
     max_cookie_attempts: int = 3
     max_captcha_solve_attempts: int = 3

@@ -47,6 +47,7 @@ class OzonCookieManager:
                     cookies = await self.browser.refresh_cookies(config.base_url)
 
                 await self.storage.set(cookies)
+                await self.storage.set_health(True)
                 return cookies
             finally:
                 if force:
@@ -59,7 +60,7 @@ class OzonCookieManager:
         )
 
         while True:
-            ttl = await self.storage.get_ttl()
+            ttl = await self.storage.get_cookies_ttl()
             if ttl < refresh_bellow.total_seconds():
                 with suppress(RefreshAlreadyInProgressError):
                     await self.collect_cookies(force=True, retry_after_exc=True)
@@ -80,9 +81,3 @@ class OzonCookieManager:
             await self.storage.close()
             await self.browser.close()
             await self.stop_watcher()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
