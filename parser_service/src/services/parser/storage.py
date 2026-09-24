@@ -34,7 +34,7 @@ class RedisCookieStorage:
         redis = await self._client()
         return await redis.ttl(self.cookies_key)
 
-    async def get(self) -> Cookies | None:
+    async def get_cookies(self) -> Cookies | None:
         try:
             redis = await self._client()
             data = await redis.get(self.cookies_key)

@@ -1,4 +1,4 @@
-import json
+from collections.abc import Iterable
 from typing import ClassVar
 
 from .exceptions import ProductExtractError
@@ -28,6 +28,21 @@ from .models import (
 from .widget_states import WidgetStates
 
 
+def _build_default_extractors() -> list[WidgetExtractor]:
+    return [
+        HeadingExtractor(),
+        DetailSkuExtractor(),
+        PriceExtractor(),
+        BrandExtractor(),
+        SellerExtractor(),
+        RatingExtractor(),
+        CharacteristicsExtractor(),
+        GalleryExtractor(),
+        MainWidgetExtractor(),
+        BigPromoExtractor(),
+    ]
+
+
 class OzonProductExtractor:
     FILL_KEYS: ClassVar[set[str]] = {
         "title",
@@ -40,30 +55,32 @@ class OzonProductExtractor:
         "url",
     }
 
-    def __init__(self) -> None:
-        self._extractors: list[WidgetExtractor] = [
-            HeadingExtractor(),
-            DetailSkuExtractor(),
-            PriceExtractor(),
-            BrandExtractor(),
-            SellerExtractor(),
-            RatingExtractor(),
-            CharacteristicsExtractor(),
-            GalleryExtractor(),
-            MainWidgetExtractor(),
-            BigPromoExtractor(),
-        ]
+    def __init__(
+        self,
+        extractors: Iterable[WidgetExtractor] | None = None,
+        out_of_stock_extractor: OutOfStockExtractor | None = None,
+        json_ld_extractor: JsonLdExtractor | None = None,
+    ) -> None:
+        self._extractors = (
+            list(extractors) if extractors is not None else _build_default_extractors()
+        )
+        self._out_of_stock_extractor = (
+            out_of_stock_extractor or OutOfStockExtractor()
+        )
+        self._json_ld_extractor = json_ld_extractor or JsonLdExtractor()
 
     def extract(self, json_data: dict | str) -> ProductData | OutOfStockProductData:
         try:
             if isinstance(json_data, str):
+                import json
+
                 json_data = json.loads(json_data)
             states = WidgetStates(json_data.get("widgetStates", {}))
 
             if states.has("webOutOfStock"):
-                return OutOfStockExtractor().extract(states)
+                return self._out_of_stock_extractor.extract(states)
 
-            data: ProductDataDict = JsonLdExtractor().extract(json_data)
+            data: ProductDataDict = self._json_ld_extractor.extract(json_data)
 
             for extractor in self._extractors:
                 partial = extractor.extract(states)

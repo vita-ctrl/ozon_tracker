@@ -1,49 +1,45 @@
 import re
+from typing import Callable, TypeVar
 from urllib.parse import urlparse, urlunparse
 
 from core import load_config
 
 config = load_config()
 
+T = TypeVar("T", int, float)
 
-def _to_int(v):
+
+def _parse_number(
+    v: object,
+    target_type: type[T],
+    parser_func: Callable[[float], T],
+    default: T,
+) -> T:
     if v is None:
-        return 0
+        return default
     if isinstance(v, (int, float)):
-        return round(v)
+        return parser_func(float(v))
     if isinstance(v, str):
         v_clean = v.strip().replace(" ", "").replace(",", ".")
         try:
-            return round(float(v_clean))
+            return parser_func(float(v_clean))
         except ValueError:
             m = re.search(r"\d+(?:[.,]\d+)?", re.sub(r"\s", "", v))
             if m:
                 try:
-                    return round(float(m.group(0).replace(",", ".")))
+                    return parser_func(float(m.group(0).replace(",", ".")))
                 except ValueError:
-                    return 0
-            return 0
-    return 0
+                    return default
+            return default
+    return default
+
+
+def _to_int(v) -> int:
+    return _parse_number(v, int, round, 0)
 
 
 def _to_float(v) -> float:
-    if v is None:
-        return 0.0
-    if isinstance(v, (int, float)):
-        return float(v)
-    if isinstance(v, str):
-        v_clean = v.strip().replace(" ", "").replace(",", ".")
-        try:
-            return float(v_clean)
-        except ValueError:
-            m = re.search(r"\d+(?:[.,]\d+)?", re.sub(r"\s", "", v))
-            if m:
-                try:
-                    return float(m.group(0).replace(",", "."))
-                except ValueError:
-                    return 0.0
-            return 0.0
-    return 0.0
+    return _parse_number(v, float, float, 0.0)
 
 
 def _to_str(v):

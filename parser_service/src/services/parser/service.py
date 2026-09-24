@@ -79,11 +79,10 @@ class ParserService:
 
         if not response.status_code.is_success:
             await self.cookie_manager.storage.set_health(False)
-
             async def _refresh():
                 with suppress(CookieCollectionError, RefreshAlreadyInProgressError):
                     await self.cookie_manager.collect_cookies(
-                        force=True, retry_after_exc=True
+                        force=True, retry_after_exc=True, browser=True
                     )
 
             asyncio.create_task(_refresh())

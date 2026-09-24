@@ -24,12 +24,15 @@ class OzonCookieManager:
         await self.close()
 
     async def collect_cookies(
-        self, *, force: bool = False, retry_after_exc: bool = False
+        self, *, force: bool = False, retry_after_exc: bool = False, browser=False
     ) -> Cookies:
         if not force:
-            cached = await self.storage.get()
+            cached = await self.storage.get_cookies()
             if cached:
                 return cached
+
+        if not browser:
+            raise CookieCollectionError("Browser cookie collection is disabled")
 
         if force:
             acquired = await self.storage.acquire_refresh_lock()
@@ -63,7 +66,7 @@ class OzonCookieManager:
             ttl = await self.storage.get_cookies_ttl()
             if ttl < refresh_bellow.total_seconds():
                 with suppress(RefreshAlreadyInProgressError):
-                    await self.collect_cookies(force=True, retry_after_exc=True)
+                    await self.collect_cookies(force=True, retry_after_exc=True, browser=True)
             await asyncio.sleep(interval.total_seconds())
 
     async def start_watcher(self) -> None:

@@ -21,7 +21,7 @@ async def force_refresh_cookies(
     retry_after_exc: bool = False
 ):
     try:
-        await manager.collect_cookies(force=True, retry_after_exc=retry_after_exc)
+        await manager.collect_cookies(force=True, retry_after_exc=retry_after_exc, browser=True)
         return {"success": True, "message": "Cookies refreshed!"}
     except RefreshAlreadyInProgressError:
         raise HTTPException(

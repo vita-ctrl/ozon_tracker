@@ -3,7 +3,7 @@ from typing import TypedDict
 
 from pydantic import BaseModel, field_validator
 
-from core import Currency
+from core import Currency  # noqa: F401
 
 from .utils import _to_float, _to_int
 
