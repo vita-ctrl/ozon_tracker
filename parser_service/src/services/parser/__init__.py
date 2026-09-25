@@ -15,11 +15,11 @@ __all__ = [
     "Cookie",
     "CookieCollectionError",
     "Cookies",
-    "RefreshAlreadyInProgressError",
     "OzonCookieManager",
     "OzonParserBrowser",
     "OzonParserCurl",
     "ParserService",
     "RedisCookieStorage",
+    "RefreshAlreadyInProgressError",
     "Response",
 ]
