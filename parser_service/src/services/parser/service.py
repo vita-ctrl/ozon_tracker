@@ -43,9 +43,20 @@ class ParserService:
         )
         if not response.status_code.is_success:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail="Service didn't change currency successfully.",
             )
+
+    async def _handle_ozon_failure(self):
+        await self.cookie_manager.storage.set_health(False)
+
+        async def _refresh():
+            with suppress(CookieCollectionError, RefreshAlreadyInProgressError):
+                await self.cookie_manager.collect_cookies(
+                    force=True, retry_after_exc=True, browser=True
+                )
+
+        asyncio.create_task(_refresh())
 
     async def check_health(self):
         healthy = await self.cookie_manager.storage.get_health()
@@ -64,7 +75,11 @@ class ParserService:
             self.curl_client.set_cookies(cookies)
 
         if currency:
-            await self._set_currency(currency)
+            try:
+                await self._set_currency(currency)
+            except HTTPException:
+                await self._handle_ozon_failure()
+                raise
         else:
             with suppress(HTTPException):
                 await self._set_currency(config.default_currency)
@@ -78,14 +93,7 @@ class ParserService:
             )
 
         if not response.status_code.is_success:
-            await self.cookie_manager.storage.set_health(False)
-            async def _refresh():
-                with suppress(CookieCollectionError, RefreshAlreadyInProgressError):
-                    await self.cookie_manager.collect_cookies(
-                        force=True, retry_after_exc=True, browser=True
-                    )
-
-            asyncio.create_task(_refresh())
+            await self._handle_ozon_failure()
             raise HTTPException(
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail="Service didn't respond successfully.",
