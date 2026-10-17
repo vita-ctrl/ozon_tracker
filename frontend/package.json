@@ -1,0 +1,30 @@
+{
+  "name": "ozon-tracker-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^26.6.5",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.58.0",
+    "@twa-dev/sdk": "^8.0.2",
+    "@twa-dev/types": "^8.0.2",
+    "axios": "^1.20.0",
+    "telegram-mock-init-data": "^0.1.0"
+  }
+}
