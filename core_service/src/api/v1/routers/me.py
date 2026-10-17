@@ -1,5 +1,6 @@
-from api.deps import UserDep
 from fastapi import APIRouter
+
+from api.deps import UserDep
 from models import User
 from schemas import UserOut
 

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Request, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,6 +24,9 @@ async def get_session(request: Request):
         yield session
 
 
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
 async def get_current_user(
     session: SessionDep, raw_init_data: str = Depends(init_data_scheme)
 ) -> User:
@@ -32,6 +35,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid X-Telegram-Init-Data header",
         )
+
     init_data = WebAppInitData.parse_init_data(raw_init_data)
     if not init_data.user:
         raise HTTPException(
@@ -56,5 +60,4 @@ async def get_current_user(
     return user
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
 UserDep = Annotated[User, Depends(get_current_user)]

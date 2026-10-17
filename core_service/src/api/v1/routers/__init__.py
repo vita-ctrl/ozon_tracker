@@ -24,4 +24,4 @@ for path in package_dir.rglob("*.py"):
 
 def setup(app: FastAPI) -> None:
     for router in routers:
-        app.include_router(router, prefix="/v1")
+        app.include_router(router, prefix="/api/v1")
